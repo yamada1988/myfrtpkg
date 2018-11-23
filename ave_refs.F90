@@ -26,7 +26,16 @@ program main
     end do
   end do
 
-
+do row = 1, row_num
+  unit_num = 13*row_num
+  write (filename, '("ave_ERmod01/refs/corref.", i2.2)') row
+  do k = 1, d
+    do l = 1, d
+    open (unit = unit_num, file = ofilename, form = "UNFORMATTED", action ="write", status = "OLD")
+    write (unit = unit_num) ave(row, :, :)
+    end do
+  end do   
+end do
 
 
 end program main
