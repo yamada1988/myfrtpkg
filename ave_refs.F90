@@ -40,13 +40,11 @@ end do
 
 ! Average weight_refs
  do j = 1, ave_num
-    do row = 1, row_num
-      unit_num = 30*row_num+j
-      write (filename, '("ERmod_", i4.4, "/refs/corref.", i2.2)') j,row
-      open (unit = unit_num, file = filename, form = "UNFORMATTED", action ="read", status = "OLD")
-      read (unit = unit_num) x(j, row, :, :)
-    end do
-  end do
+    unit_num = 11*j
+    write (filename, '("ERmod_", i4.4, "/refs/weight_refs)') j
+    open (unit = unit_num, file = filename, form = "UNFORMATTED", action ="read", status = "OLD")
+    read (unit = unit_num) y(j, :, :)   
+ end do
 
   do k = 1, d
     do l = 1, d
