@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash 
 
 num=32
 for i in `seq -f %03g 90 -10 0`
