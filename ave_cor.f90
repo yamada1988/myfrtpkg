@@ -41,9 +41,9 @@ allocate(w(0:lnum,wset_line),s(0:lnum,wset_line))
 1000 format(I5,E20.8,E20.7)
 
 do k=1,5
-  do l = 0,lnum-1
   cormat_temp = 0
   rdcor = 0
+  do l = 0,lnum-1
 
    write(fname,"('ERmod_',i4.4,'/refs/corsln.',i2.2)") l+1, k
    open(10,file=fname,status='old',form="UNFORMATTED")
