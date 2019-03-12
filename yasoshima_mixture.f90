@@ -2,7 +2,7 @@
       implicit none
       save
 
-!input data : set_num; number of sumples
+!input data : set_num; number of sumples 
 !           : set_line; file lines(weight_refs,engref) 
 
 integer :: set_num=32
