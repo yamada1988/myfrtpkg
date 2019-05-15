@@ -81,7 +81,7 @@ integer :: sample_num
 integer :: access
 real*8,dimension(:),intent(in) :: ave_w,sum_w
 real*8,dimension(0:,:),intent(in) :: w
-integer :: set_line=1396
+integer :: set_line=1496
 character(len=80) :: fname,fname2,fname3
 character(len=25),dimension(:),allocatable :: line
 real*8,dimension(:),allocatable :: ave_e
