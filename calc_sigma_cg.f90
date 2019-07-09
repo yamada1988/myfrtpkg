@@ -8,6 +8,12 @@ program calc_sigma
   double precision, allocatable,dimension(:,:) :: G
   double precision, allocatable,dimension(:,:) :: P_cg
   integer blockn
+  double precision :: V, kBT, alpha
+  V = 4.725E-24 
+  kBT = 4.114E-21
+  alpha = V/kBT
+  alpha = 1.0
+
   blockn = 50
 
 
@@ -53,13 +59,15 @@ program calc_sigma
   do i = 0, m
     do k = 1,3
       do i0 = 1, m-i
-        G(k,i) = G(k,i) + P_cg(k,i+i0-1)*P_cg(k,i0)
+        G(k,i) = G(k,i) + P_cg(k,i+i0)*P_cg(k,i0)
       end do
       G(k,i) = G(k,i)/(n-i+1)
     end do
   end do
 !$omp end do
 !$omp end parallel
+
+  G = G * alpha
 
   open(98, file='Gxy_cg.xvg')
   do i = 1, m
