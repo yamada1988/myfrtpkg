@@ -1,9 +1,9 @@
-program calc_sigma
+ program calc_sigma
   implicit none
   integer i, i0, j, k
   double precision, allocatable,dimension(:,:) :: P
   double precision, allocatable,dimension(:) :: t
-  double precision, allocatable,dimension(:) :: t_cg
+  double precision, allocatable,dimension(:) :: t_cg, Geta
   integer n,m
   double precision, allocatable,dimension(:,:) :: G
   double precision, allocatable,dimension(:,:) :: P_cg
@@ -23,7 +23,8 @@ program calc_sigma
   allocate( P_cg(3, m) )
   allocate( t(n) )
   allocate( G(3,0:n) )
-  allocate( t_cg(n) )
+  allocate( t_cg(m) )
+  allocate( Geta(0:m) )
 
   G = 0.0
   P_cg = 0.0
@@ -87,5 +88,17 @@ program calc_sigma
   end do
   close(96)  
 
- 
+do i=0, m-1
+  do k=1,3
+    Geta(i) = Geta(i) + G(k,i)
+  end do
+  Geta(i) = Geta(i)/dble(3.0)
+end do
+
+  open(95, file='Geta_cg.xvg')
+  do i = 0, m-1
+    write(95, "(f9.4, f20.11)") t(i), Geta(i)
+  end do 
+  close(95)
+
 end
