@@ -97,7 +97,7 @@ end do
 
   open(95, file='Geta_cg.xvg')
   do i = 0, m-1
-    write(95, "(f9.4, f20.11)") t(i), Geta(i)
+    write(95, "(f9.4, f20.11)") t_cg(i), Geta(i)
   end do 
   close(95)
 
