@@ -1,0 +1,21 @@
+FC = gfortran
+
+TARGET = msd
+SRC = msd.f90
+OBJS =  msd.o xdr.o
+LIBS = -L/home/usr4/o70344a/software/xdr/lib/ -lxdrfile
+
+
+all:msd.out
+
+msd.out:$(OBJS)
+	$(FC) $(OBJS) $(LIBS) -o msd.out
+
+#object
+msd.o:msd.f90
+
+%.o:%.f90
+	$(FC) -c $< -o $@
+
+clean:
+	rm -f msd.o
