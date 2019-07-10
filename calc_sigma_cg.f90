@@ -43,7 +43,6 @@
     do j=(i-1)*blockn+1, i*blockn
       t_cg(i) = t_cg(i) + t(j)
     end do
-    t_cg(i) = t_cg(i)/blockn
   end do
 
   do i = 1, m
