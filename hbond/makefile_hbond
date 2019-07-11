@@ -1,0 +1,21 @@
+FC = gfortran
+
+TARGET = hbond
+SRC = hbond.f90
+OBJS =  hbond.o xdr.o
+LIBS = -L/home/usr4/o70344a/software/xdr/lib/ -lxdrfile
+OPTION = -fopenmp
+
+all:hbond.out
+
+hbond.out:$(OBJS)
+	$(FC) $(OBJS) $(LIBS) $(OPTION) -o hbond.out
+
+#object
+hbond.o:hbond.f90
+
+%.o:%.f90
+	$(FC) -c $< -o $@
+
+clean:
+	rm -f hbond.o
