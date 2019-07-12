@@ -4,7 +4,7 @@ TARGET = hbond
 SRC = hbond.f90
 OBJS =  hbond.o xdr.o
 LIBS = -L/home/usr4/o70344a/software/xdr/lib/ -lxdrfile
-OPTION = -fopenmp
+OPTION = -O3 -fopenmp
 
 all:hbond.out
 
@@ -15,7 +15,7 @@ hbond.out:$(OBJS)
 hbond.o:hbond.f90
 
 %.o:%.f90
-	$(FC) -c $< -o $@
+	$(FC) -c -O3 $< -o $@
 
 clean:
 	rm -f hbond.o
