@@ -1,4 +1,5 @@
-!  XDR Fortran Interface XTC Example Program with Wrapper
+!  Requirement:libxdrfile-1.1.4
+!  Download from https://github.com/wesbarnett/libxdrfile
 !  2014 (c) James W. Barnett <jbarnet4@tulane.edu>
 !  https://github.com/wesbarnett/
 !
@@ -17,18 +18,6 @@ program hbond
     integer :: i,j,k, jo, jh1, jh2, ik, jk
     character outf*128
 
- 
-    integer, parameter :: nmlfu=20
-    real(8), parameter :: PI=3.1415927
-    real(8) :: dist, dcosij
-    real(8), dimension(2) :: cosij, cosji
-    real(8), dimension(3) :: r_ojoi, r_hi1oi, r_hi2oi, r_hj1oj, r_hj2oj, u_ojoi, u_oioj, u_hi1oi, u_hi2oi, u_hj1oj, u_hj2oj
-    character(len=200) :: inpfile, outfile
-    integer :: totalstep, skipstep, logstep, liststep, lmax
-    real(8) :: dlist, dhbond, dtheta
-    namelist/indata/inpfile,outfile
-    namelist/inparam/totalstep,skipstep,logstep,liststep,dlist,lmax,dhbond,dtheta
-
 
     type mytype
     real(8), dimension(3):: O
@@ -38,11 +27,33 @@ program hbond
 
     type(mytype), allocatable, dimension(:,:) :: tip4p
 
+
     type mytype2
     integer, dimension(200) :: pair = -1
     end type mytype2
 
     type(mytype2), allocatable, dimension(:) :: DistanceList
+
+
+    real(8), allocatable, dimension(:) :: sm_val
+    integer, allocatable, dimension(:) :: sm_indx
+    integer, allocatable, dimension(:) :: sm_jndx
+
+
+    integer, parameter :: nmlfu=20
+    integer, parameter :: hbond_io=17
+    real(8), parameter :: PI=3.1415927
+    real(8) :: dist, dcosij
+    real(8), dimension(2) :: cosij, cosji
+    real(8), dimension(3) :: r_ojoi, r_hi1oi, r_hi2oi, r_oioj, r_hj1oj, r_hj2oj
+    character(len=200) :: inpfile, outfile
+    integer :: totalstep, skipstep, logstep, liststep, lmax, i_hbond
+    real(8) :: dlist, dhbond, dtheta
+    namelist/indata/inpfile,outfile
+    namelist/inparam/totalstep,skipstep,logstep,liststep,dlist,lmax,dhbond,dtheta
+    character(len=20) :: hfile = "hbond_dens"
+    
+    
 
     ! 2. Declare a variable of type xtcfile
     type(xtcfile) :: xtcf
@@ -65,6 +76,10 @@ program hbond
     allocate(tip4p(0:ptotalstep, 1:no))
     allocate(box(0:ptotalstep))
     allocate(DistanceList(1:no))
+    allocate(sm_val(10*no))
+    allocate(sm_indx(10*no))
+    allocate(sm_jndx(10*no)) 
+
 
     call xtcf % read
     it = 0 
@@ -121,33 +136,31 @@ program hbond
 
     ! calculate Hydrogen bond pair
     do pit = 1, ptotalstep
+      ! Initialize sparse matrix
+      sm_val = -1.0E0
+      sm_indx = -1
+      sm_jndx = -1
 
       ! make list
       if (mod(pit, liststep) == 0) then
         do i=1, no
           ik = 0
           Distancelist(i)%pair = -1
-          do j=i+1, no
+          do j=1, no
             r_ojoi = tip4p(pit,i)%O - tip4p(pit,j)%O
-            !print *, i,j, dr
-            r_ojoi = r_ojoi - box(pit)*nint(r_ojoi/box(pit))
-            !print *, i,j, dr
+            r_ojoi = wrap_vector(r_ojoi, box(pit))
             dist = sqrt(sum(r_ojoi**2))
-            if (dist <= dlist) then
+            if (dist <= dlist .and. 0.010 < dist) then
               ik = ik + 1
               DistanceList(i)%pair(ik) = j
-              !print *, pit, i, j, ik, dist
             end if
-            !print *, pit, i, ik, j, DistanceList(i)%pair(ik)
           end do
-          !do jk = 1, lmax
-          !  print *, pit, i, jk, DistanceList(i)%pair(jk)
-          !end do
         end do
       end if
 
       ! calc hbond-pair for i-DistanceList(i)%pair 
       ! ref:Kumar et.al., J. Chem. Phys.126, 204107, (2007)
+      i_hbond = 1
       do i=1, no
         do jk=1, lmax
           j = DistanceList(i)%pair(jk)
@@ -158,43 +171,45 @@ program hbond
           dist = sqrt(sum(r_ojoi**2))
 
           if (dist >= dhbond ) cycle
-          !print *, i, j, dist 
+          ! calculate angle between oi-oj and oi-hki(k=1,2)
           r_hi1oi = wrap_vector( tip4p(pit,i)%H1-tip4p(pit,i)%O, box(pit) )
           r_hi2oi = wrap_vector( tip4p(pit,i)%H2-tip4p(pit,i)%O, box(pit) )
 
-          u_ojoi = r_ojoi/dist
-          u_hi1oi = unit_vector(r_hi1oi)
-          u_hi2oi = unit_vector(r_hi2oi)
+          r_ojoi = r_ojoi/dist
+          r_hi1oi = unit_vector(r_hi1oi)
+          r_hi2oi = unit_vector(r_hi2oi)
           !print *, u_hjoi, u_hioi
 
-          ! calculate angle between oi-oj and oi-hki(k=1,2)
-          cosij(1) = sum(u_ojoi(:)*u_hi1oi(:))
-          cosij(2) = sum(u_ojoi(:)*u_hi2oi(:))
-          if ( abs(cosij(1)) > dcosij) then
-            print *, i, j, 1, cosij(1)
-          end if
-          if ( abs(cosij(2)) > dcosij) then
-            print *, i, j, 2, cosij(2)
-          end if
+          cosij(1) = sum(r_ojoi(:)*r_hi1oi(:))
+          cosij(2) = sum(r_ojoi(:)*r_hi2oi(:))
 
           ! calculate angle between oj-oi and oj-hkj(k=1,2)
           r_hj1oj = wrap_vector( tip4p(pit,j)%H1-tip4p(pit,j)%O, box(pit) )
           r_hj2oj = wrap_vector( tip4p(pit,j)%H2-tip4p(pit,j)%O, box(pit) )
-          u_oioj = -1.0E0*u_ojoi
-          u_hj1oj = unit_vector(r_hj1oj)
-          u_hj2oj = unit_vector(r_hj2oj)
-          cosji(1) = sum(u_oioj(:)*u_hj1oj(:))
-          cosji(2) = sum(u_oioj(:)*u_hj2oj(:))
-          if ( abs(cosji(1)) > dcosij) then
-            print *, i, j, 1, cosji(1)
-          end if
-          if ( abs(cosji(2)) > dcosij) then
-            print *, i, j, 2, cosji(2)
-          end if
+          r_oioj = -1.0E0*r_ojoi
+          r_hj1oj = unit_vector(r_hj1oj)
+          r_hj2oj = unit_vector(r_hj2oj)
+          cosji(1) = sum(r_oioj(:)*r_hj1oj(:))
+          cosji(2) = sum(r_oioj(:)*r_hj2oj(:))
+          
 
-
+          if ( abs(cosij(1)) > dcosij .or. abs(cosij(2)) > dcosij .or. abs(cosji(1)) > dcosij .or. abs(cosji(2)) > dcosij) then
+            sm_val(i_hbond) = 1.0E0
+            sm_indx(i_hbond) = i 
+            sm_jndx(i_hbond) = j
+            i_hbond = i_hbond + 1
+          end if
         end do
+        print *, i_hbond
       end do
+
+      open(unit = hbond_io, file = hfile, action = 'write')  
+      do ik=1, i_hbond
+        if(sm_val(ik) < 0) cycle
+        write(hbond_io, '(f5.2, 2X, I7, 2X, I7)') sm_val(ik), sm_indx(ik), sm_jndx(ik)
+      end do
+      close(hbond_io)
+
     end do
 
 
