@@ -20,8 +20,9 @@ program hbond
  
     integer, parameter :: nmlfu=20
     real(8), parameter :: PI=3.1415927
-    real(8) :: dist, cosij, dcosij
-    real(8), dimension(3) :: dr, r_hjoi, r_hioi, u_hjoi, u_hioi
+    real(8) :: dist, dcosij
+    real(8), dimension(2) :: cosij, cosji
+    real(8), dimension(3) :: r_ojoi, r_hi1oi, r_hi2oi, r_hj1oj, r_hj2oj, u_ojoi, u_oioj, u_hi1oi, u_hi2oi, u_hj1oj, u_hj2oj
     character(len=200) :: inpfile, outfile
     integer :: totalstep, skipstep, logstep, liststep, lmax
     real(8) :: dlist, dhbond, dtheta
@@ -126,48 +127,71 @@ program hbond
         do i=1, no
           ik = 0
           Distancelist(i)%pair = -1
-          do j=1, no
-            dr = tip4p(pit,i)%O - tip4p(pit,j)%O
+          do j=i+1, no
+            r_ojoi = tip4p(pit,i)%O - tip4p(pit,j)%O
             !print *, i,j, dr
-            dr = dr - box(pit)*nint(dr/box(pit))
+            r_ojoi = r_ojoi - box(pit)*nint(r_ojoi/box(pit))
             !print *, i,j, dr
-            dist = sqrt(sum(dr**2))
-            if (dist <= dlist .and. 0.010 < dist) then
+            dist = sqrt(sum(r_ojoi**2))
+            if (dist <= dlist) then
               ik = ik + 1
               DistanceList(i)%pair(ik) = j
               !print *, pit, i, j, ik, dist
             end if
             !print *, pit, i, ik, j, DistanceList(i)%pair(ik)
           end do
-          do jk = 1, lmax
-            print *, pit, i, jk, DistanceList(i)%pair(jk)
-          end do
+          !do jk = 1, lmax
+          !  print *, pit, i, jk, DistanceList(i)%pair(jk)
+          !end do
         end do
       end if
 
-      ! calc distance for i-DistanceList(i)%pair
+      ! calc hbond-pair for i-DistanceList(i)%pair 
+      ! ref:Kumar et.al., J. Chem. Phys.126, 204107, (2007)
       do i=1, no
         do jk=1, lmax
           j = DistanceList(i)%pair(jk)
           if( j < 0 ) exit
 
-          dr = tip4p(pit,i)%O - tip4p(pit,j)%O
-          dr = wrap_vector(dr, box(pit))
-          dist = sqrt(sum(dr**2))
+          r_ojoi = tip4p(pit,i)%O - tip4p(pit,j)%O
+          r_ojoi = wrap_vector(r_ojoi, box(pit))
+          dist = sqrt(sum(r_ojoi**2))
 
           if (dist >= dhbond ) cycle
           !print *, i, j, dist 
-          r_hjoi = wrap_vector( tip4p(pit,j)%H1-tip4p(pit,i)%O, box(pit) )
-          r_hioi = wrap_vector( tip4p(pit,i)%H1-tip4p(pit,i)%O, box(pit) )
-          u_hjoi = unit_vector(r_hjoi)
-          u_hioi = unit_vector(r_hioi)
+          r_hi1oi = wrap_vector( tip4p(pit,i)%H1-tip4p(pit,i)%O, box(pit) )
+          r_hi2oi = wrap_vector( tip4p(pit,i)%H2-tip4p(pit,i)%O, box(pit) )
+
+          u_ojoi = r_ojoi/dist
+          u_hi1oi = unit_vector(r_hi1oi)
+          u_hi2oi = unit_vector(r_hi2oi)
           !print *, u_hjoi, u_hioi
-          cosij = 0.0E0
-          do k=1, 3
-            cosij = cosij + u_hjoi(k)*u_hioi(k)
-          end do
-          if( abs(cosij) < dcosij ) cycle
-          print *, i, j, cosij
+
+          ! calculate angle between oi-oj and oi-hki(k=1,2)
+          cosij(1) = sum(u_ojoi(:)*u_hi1oi(:))
+          cosij(2) = sum(u_ojoi(:)*u_hi2oi(:))
+          if ( abs(cosij(1)) > dcosij) then
+            print *, i, j, 1, cosij(1)
+          end if
+          if ( abs(cosij(2)) > dcosij) then
+            print *, i, j, 2, cosij(2)
+          end if
+
+          ! calculate angle between oj-oi and oj-hkj(k=1,2)
+          r_hj1oj = wrap_vector( tip4p(pit,j)%H1-tip4p(pit,j)%O, box(pit) )
+          r_hj2oj = wrap_vector( tip4p(pit,j)%H2-tip4p(pit,j)%O, box(pit) )
+          u_oioj = -1.0E0*u_ojoi
+          u_hj1oj = unit_vector(r_hj1oj)
+          u_hj2oj = unit_vector(r_hj2oj)
+          cosji(1) = sum(u_oioj(:)*u_hj1oj(:))
+          cosji(2) = sum(u_oioj(:)*u_hj2oj(:))
+          if ( abs(cosji(1)) > dcosij) then
+            print *, i, j, 1, cosji(1)
+          end if
+          if ( abs(cosji(2)) > dcosij) then
+            print *, i, j, 2, cosji(2)
+          end if
+
 
         end do
       end do
@@ -201,7 +225,5 @@ contains
   end function unit_vector
 
   
-  ! return theta(rad)
-
 
 end program hbond
