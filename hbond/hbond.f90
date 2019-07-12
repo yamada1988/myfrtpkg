@@ -13,7 +13,7 @@ program hbond
     integer :: natm
     integer :: no
     double precision ::  dt
-    double precision, allocatable, dimension(:) :: box
+    double precision :: box
     integer :: it, pit, pit0, ptotalstep
     integer :: i,j,k, jo, jh1, jh2, ik, jk
     character outf*128
@@ -25,7 +25,7 @@ program hbond
     real(8), dimension(3):: H2
     end type mytype
 
-    type(mytype), allocatable, dimension(:,:) :: tip4p
+    type(mytype), allocatable, dimension(:) :: tip4p
 
 
     type mytype2
@@ -51,7 +51,7 @@ program hbond
     real(8) :: dlist, dhbond, dtheta
     namelist/indata/inpfile,outfile
     namelist/inparam/totalstep,skipstep,logstep,liststep,dlist,lmax,dhbond,dtheta
-    character(len=20) :: hfile = "hbond_dens"
+    character(len=20) :: hfile = "hbond.sm"
     
     
 
@@ -66,6 +66,9 @@ program hbond
     close(unit=nmlfu)
 
 
+    open(hbond_io, file=hfile)
+    close(hbond_io, status='delete')
+
     ! 3. Initialize it with the names of xtc files you want to read in and write out
     call xtcf % init(inpfile)
 
@@ -73,8 +76,7 @@ program hbond
     no = natm / 4
     ptotalstep = totalstep / skipstep
     dcosij = cos(dtheta*PI/180.0)
-    allocate(tip4p(0:ptotalstep, 1:no))
-    allocate(box(0:ptotalstep))
+    allocate(tip4p(1:no))
     allocate(DistanceList(1:no))
     allocate(sm_val(10*no))
     allocate(sm_indx(10*no))
@@ -106,7 +108,7 @@ program hbond
         end if
 
         ! get box in it-th step
-        box(pit) = xtcf % box(1,1)
+        box = xtcf % box(1,1)
 
         !$omp parallel shared(xtcf, tip4p)
         !$omp private(jo, jh1, jh2)
@@ -116,47 +118,36 @@ program hbond
           jo = 4*(i-1) + 1
           jh1 = jo + 1
           jh2 = jo + 2
-          tip4p(pit,i) % O = xtcf % pos(:, jo)
-          tip4p(pit,i) % H1 = xtcf % pos(:, jh1)
-          tip4p(pit,i) % H2 = xtcf % pos(:, jh2)
-          !print *, it, i, tip4p(pit,i)%O
+          tip4p(i) % O = xtcf % pos(:, jo)
+          tip4p(i) % H1 = xtcf % pos(:, jh1)
+          tip4p(i) % H2 = xtcf % pos(:, jh2)
+          !print *, it, i, tip4p(i)%O
         end do
         !$omp end do
         !$omp end parallel
-        
-        ! call nextstep
-        call xtcf % read
-        it = it + 1
-        pit = pit + 1
-    end do
-    ! 5. Close the file
-    call xtcf % close
- 
 
+        ! Initialize sparse matrix
+        sm_val = -1.0E0
+        sm_indx = -1
+        sm_jndx = -1
 
-    ! calculate Hydrogen bond pair
-    do pit = 1, ptotalstep
-      ! Initialize sparse matrix
-      sm_val = -1.0E0
-      sm_indx = -1
-      sm_jndx = -1
-
-      ! make list
-      if (mod(pit, liststep) == 0) then
-        do i=1, no
-          ik = 0
-          Distancelist(i)%pair = -1
-          do j=1, no
-            r_ojoi = tip4p(pit,i)%O - tip4p(pit,j)%O
-            r_ojoi = wrap_vector(r_ojoi, box(pit))
-            dist = sqrt(sum(r_ojoi**2))
-            if (dist <= dlist .and. 0.010 < dist) then
-              ik = ik + 1
-              DistanceList(i)%pair(ik) = j
-            end if
+        ! make list
+        if (mod(pit, liststep) == 0) then
+          do i=1, no
+            ik = 0
+            Distancelist(i)%pair = -1
+            do j=1, no
+              r_ojoi = tip4p(i)%O - tip4p(j)%O
+              r_ojoi = wrap_vector(r_ojoi, box)
+              dist = sqrt(sum(r_ojoi**2))
+              if (dist <= dlist .and. 0.010 < dist) then
+                ik = ik + 1
+                DistanceList(i)%pair(ik) = j
+              end if
+            end do
           end do
-        end do
-      end if
+        end if
+
 
       ! calc hbond-pair for i-DistanceList(i)%pair 
       ! ref:Kumar et.al., J. Chem. Phys.126, 204107, (2007)
@@ -166,14 +157,14 @@ program hbond
           j = DistanceList(i)%pair(jk)
           if( j < 0 ) exit
 
-          r_ojoi = tip4p(pit,i)%O - tip4p(pit,j)%O
-          r_ojoi = wrap_vector(r_ojoi, box(pit))
+          r_ojoi = tip4p(i)%O - tip4p(j)%O
+          r_ojoi = wrap_vector(r_ojoi, box)
           dist = sqrt(sum(r_ojoi**2))
 
           if (dist >= dhbond ) cycle
           ! calculate angle between oi-oj and oi-hki(k=1,2)
-          r_hi1oi = wrap_vector( tip4p(pit,i)%H1-tip4p(pit,i)%O, box(pit) )
-          r_hi2oi = wrap_vector( tip4p(pit,i)%H2-tip4p(pit,i)%O, box(pit) )
+          r_hi1oi = wrap_vector( tip4p(i)%H1-tip4p(i)%O, box )
+          r_hi2oi = wrap_vector( tip4p(i)%H2-tip4p(i)%O, box )
 
           r_ojoi = r_ojoi/dist
           r_hi1oi = unit_vector(r_hi1oi)
@@ -184,33 +175,41 @@ program hbond
           cosij(2) = sum(r_ojoi(:)*r_hi2oi(:))
 
           ! calculate angle between oj-oi and oj-hkj(k=1,2)
-          r_hj1oj = wrap_vector( tip4p(pit,j)%H1-tip4p(pit,j)%O, box(pit) )
-          r_hj2oj = wrap_vector( tip4p(pit,j)%H2-tip4p(pit,j)%O, box(pit) )
+          r_hj1oj = wrap_vector( tip4p(j)%H1-tip4p(j)%O, box )
+          r_hj2oj = wrap_vector( tip4p(j)%H2-tip4p(j)%O, box )
           r_oioj = -1.0E0*r_ojoi
           r_hj1oj = unit_vector(r_hj1oj)
           r_hj2oj = unit_vector(r_hj2oj)
           cosji(1) = sum(r_oioj(:)*r_hj1oj(:))
           cosji(2) = sum(r_oioj(:)*r_hj2oj(:))
-          
+
 
           if ( abs(cosij(1)) > dcosij .or. abs(cosij(2)) > dcosij .or. abs(cosji(1)) > dcosij .or. abs(cosji(2)) > dcosij) then
             sm_val(i_hbond) = 1.0E0
-            sm_indx(i_hbond) = i 
+            sm_indx(i_hbond) = i
             sm_jndx(i_hbond) = j
             i_hbond = i_hbond + 1
           end if
         end do
-        print *, i_hbond
       end do
-
-      open(unit = hbond_io, file = hfile, action = 'write')  
+      
+      open(unit = hbond_io, file = hfile, form='UNFORMATTED', action = 'write', position='append')
       do ik=1, i_hbond
         if(sm_val(ik) < 0) cycle
-        write(hbond_io, '(f5.2, 2X, I7, 2X, I7)') sm_val(ik), sm_indx(ik), sm_jndx(ik)
+        write(hbond_io) sm_val(ik), sm_indx(ik), sm_jndx(ik)
       end do
+      write(hbond_io) ''
+      endfile(hbond_io)
       close(hbond_io)
 
+      ! call nextstep
+      call xtcf % read
+      it = it + 1
+      pit = pit + 1
+
     end do
+    ! 5. Close the file
+    call xtcf % close
 
 
 stop
