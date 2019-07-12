@@ -3,12 +3,12 @@ inpfile   = '../../Production/md.xtc'
 outfile   = './hbond.dat'
 /
 &inparam
-totalstep =   100
-skipstep  =    10
-logstep   =  1000
-liststep  =    10
-dlist     =   1.0
-lmax      =   150
-dhbond    = 0.350
-dtheta    =  32.0
+totalstep =   2000
+skipstep  =      1
+logstep   =    100
+liststep  =    100
+dlist     =    1.0
+lmax      =    150
+dhbond    =  0.350
+dtheta    =   30.0
 /
