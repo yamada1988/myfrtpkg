@@ -15,7 +15,10 @@ hbond.out:$(OBJS)
 hbond.o:hbond.f90
 
 %.o:%.f90
-	$(FC) -c -O3 $< -o $@
+	$(FC) -c $< -o $@
+
+xdr.o:xdr.F90
+	$(FC) -c $<
 
 clean:
 	rm -f hbond.o
