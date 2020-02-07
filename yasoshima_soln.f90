@@ -99,7 +99,7 @@ allocate(e_num(0:set_num,set_line))
      do i=1,set_line
        read(10,*) j,e_num(l,i) 
        !print *, l+1, i, e_num(l,i)
-       ave_e(i) = ave_e(i) + e_num(l,i)*w(l,i)
+       ave_e(i) = ave_e(i) + e_num(l,i)!*w(l,i)
      end do
      close(10)
   end do
@@ -107,7 +107,7 @@ allocate(e_num(0:set_num,set_line))
   write(fname2,"('aveERmod_01/soln/aveuv.tt')") 
   open(20,file=fname2)
   do i=1,set_line
-   ave_e(i) = ave_e(i)/sum_w(i)
+   ave_e(i) = ave_e(i)/sample_num!sum_w(i)
    print *, i, ave_e(i)
    write(20,*) i, ave_e(i)
   end do
