@@ -6,7 +6,7 @@ program stress
     integer, parameter :: nsol_atm = 4
     integer, parameter :: npoly =   50
     integer, parameter :: npoly_atm = 1405
-    integer, parameter :: nstep = 501
+    integer, parameter :: nstep = 10001
     real(kind=8), parameter :: dt = 0.010E0, sfctr = 16.6057788
     real(kind=8), allocatable :: pos(:,:), vel(:,:), force(:,:), sigma_v(:,:,:,:), sigma_k(:,:,:,:), sigma(:,:,:,:), amass(:)
     real(kind=8) :: sigma_buffer_v(3,3) = 0.0E0, sigma_buffer_k(3,3) = 0.0E0 
@@ -20,9 +20,10 @@ program stress
     real, parameter :: massO = 15.9994          ! atomic weight (oxygen)   (g/mol)
     real, parameter :: massM = 0
 
-    call trr % init("md.trr")
+    call trr % init("../MD/md.trr")
 
     npos = nsol * nsol_atm + npoly * npoly_atm
+    offset = nsol * nsol_atm
     allocate(pos(3, npos))
     allocate(vel(3, npos))
     allocate(force(3, npos))
@@ -59,9 +60,8 @@ program stress
        amass(i) = amass(mod(i, nsol_atm))
     end do
 
-    offset = nsol*nsol_atm
     open (72,file='MolInfo',status='old',iostat=ioerr)
-     do i = offset+1, offset+1+(npoly_atm-1)
+     do i = offset+1, offset+npoly_atm
         read (72,*) dummy1,atm,dummy2
         select case(atm)
         case('H')
@@ -78,10 +78,9 @@ program stress
      end do
     close (72)
     amass_buffer = amass(offset)
-    amass(offset) = amass(offset+1+(npoly_atm-1))
+    amass(offset) = amass(offset+npoly_atm)
     do i = offset+npoly_atm+1, npos
        amass(i) = amass(offset+mod((i-offset), npoly_atm))
-    !   write(*,'(I7,2X,f8.5)') i, amass(i)
     end do
     amass(offset) = amass_buffer
     !do i = 1, npos
@@ -118,8 +117,8 @@ program stress
                     sigma_v(2, alpha, beta, ng) = sigma_v(2, alpha, beta, ng) + sigma_buffer_v(alpha, beta)
                     sigma_k(2, alpha, beta, ng) = sigma_k(2, alpha, beta, ng) + sigma_buffer_k(alpha, beta)
                end do
-               sigma_v(2, alpha, beta, ng) = sigma_v(2, alpha, beta, ng) * sfctr !bar
-               sigma_k(2, alpha, beta, ng) = sigma_k(2, alpha, beta, ng) * sfctr!bar
+               sigma_v(2, alpha, beta, ng) = sigma_v(2, alpha, beta, ng) * sfctr  !bar
+               sigma_k(2, alpha, beta, ng) = sigma_k(2, alpha, beta, ng) * sfctr  !bar
                sigma(2, alpha, beta, ng) = sigma_v(2, alpha, beta, ng) + sigma_k(2, alpha, beta, ng)
            end do
         end do
@@ -129,8 +128,18 @@ program stress
     ! 5. Close the file
     call trr % close
 
+
     ! output results
+    open(17, file='sigma-water.xvg',status='replace')
     do i = 1, nstep
-      write(*,'(f8.3,2X,f20.9,2X,f20.9,2X,f20.9)') (i-1)*dt, sigma(1, 1, 1, i), sigma(2, 1, 1, i)
+      write(17,'(f8.3,2X,f20.9)') (i-1)*dt, sigma(1, 1, 2, i)
     end do
+    close(17)
+
+    open(18, file='sigma-pva.xvg',status='replace')
+    do i = 1, nstep
+      write(18,'(f8.3,2X,f20.9)') (i-1)*dt, sigma(2, 1, 2, i)
+    end do
+    close(18)
+
 end program stress
