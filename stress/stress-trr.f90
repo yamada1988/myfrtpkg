@@ -1,3 +1,7 @@
+! TODO:
+! See the Virial calculation page on Gromacs manual.
+! periodicity must be considered for the virial calculation.
+
 program stress
     use xdr, only: trrfile
     implicit none
