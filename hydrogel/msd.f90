@@ -1,4 +1,3 @@
-
 !  XDR Fortran Interface XTC Example Program with Wrapper
 !  2014 (c) James W. Barnett <jbarnet4@tulane.edu>
 !  https://github.com/wesbarnett/
@@ -30,7 +29,7 @@ program msd
 
     natm = xtcf % NATOMS
     no = natm / 3
-    no = 1000
+    no = 100000
     np = 351000
     totalstep = 4000
     skipstep = 1
@@ -116,7 +115,8 @@ program msd
     ! 5. Close the file
     call xtcf % close
  
-
+    !$omp parallel shared(pos_o_fly, msdt), private(i, pit, pit0)
+    !$omp do
     do i = 1, no
       write(outf, '("DAT/msds/msd", i7.7, ".xvg")') i
       open(99, file=outf)
@@ -124,7 +124,7 @@ program msd
           do pit0 = 0, ptotalstep-pit
             !print *, pit, pit0, pos_o_fly(pit+pit0,:),
             !pos_o_fly(pit0,:)
-            msdt(pit, i) = msdt(pit, i) + sqrt(sum(( pos_o_fly(pit+pit0, i, :) - pos_o_fly(pit0,i,:) )**2))
+            msdt(pit, i) = msdt(pit, i) + sum(( pos_o_fly(pit+pit0, i, :) - pos_o_fly(pit0,i,:) )**2)
           end do
           msdt(pit, i) = msdt(pit, i) / dble(ptotalstep - pit+1)
           !print *, pit, msdt(pit)
@@ -132,4 +132,8 @@ program msd
         end do
       close(99)
     end do
+    !$omp end do
+    !$omp end parallel
+
 end program msd
+
