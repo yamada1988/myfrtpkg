@@ -176,6 +176,11 @@ program hbond
       end do
 
 
+      open(17, file=hbond_io, status='replace')
+        write(17,'(f9.4,i0)') xtcf % time, total
+      close(17)
+        
+
 
       ! call nextstep
       call xtcf % read
