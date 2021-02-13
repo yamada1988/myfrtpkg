@@ -25,7 +25,7 @@ program hbond
     real(8), dimension(3):: H2
     end type mytype
 
-    type(mytype), allocatable, dimension(:) :: tip4p
+    type(mytype), allocatable, dimension(:) :: tip3p
 
 
     type mytype2
@@ -78,7 +78,7 @@ program hbond
     call xtcf % init(inpfile)
 
     natm = xtcf % NATOMS
-    no = natm / 4
+    no = natm / 3
     ptotalstep = totalstep / skipstep
     dcosij = cos(dtheta*PI/180.0)
     allocate(tip4p(1:no))
@@ -115,18 +115,18 @@ program hbond
         ! get box in it-th step
         box = xtcf % box(1,1)
 
-        !$omp parallel shared(xtcf, tip4p)
+        !$omp parallel shared(xtcf, tip3p)
         !$omp private(jo, jh1, jh2)
         !$omp do
         ! get position (j-th O) and box at it-th step
         do i=1, no
-          jo = 4*(i-1) + 1
+          jo = 3*(i-1) + 1
           jh1 = jo + 1
           jh2 = jo + 2
-          tip4p(i) % O = xtcf % pos(:, jo)
-          tip4p(i) % H1 = xtcf % pos(:, jh1)
-          tip4p(i) % H2 = xtcf % pos(:, jh2)
-          !print *, it, i, tip4p(i)%O
+          tip3p(i) % O = xtcf % pos(:, jo)
+          tip3p(i) % H1 = xtcf % pos(:, jh1)
+          tip3p(i) % H2 = xtcf % pos(:, jh2)
+          !print *, it, i, tip3p(i)%O
         end do
         !$omp end do
         !$omp end parallel
@@ -142,7 +142,7 @@ program hbond
             ik = 0
             Distancelist(i)%pair = int(-1)
             do j=1, no
-              r_ojoi = tip4p(i)%O - tip4p(j)%O
+              r_ojoi = tip3p(i)%O - tip3p(j)%O
               r_ojoi = wrap_vector(r_ojoi, box)
               dist = sqrt(sum(r_ojoi**2))
               if (dist <= dlist .and. 0.010 < dist) then
@@ -162,14 +162,14 @@ program hbond
           j = DistanceList(i)%pair(jk)
           if( j < 0 ) exit
 
-          r_ojoi = tip4p(i)%O - tip4p(j)%O
+          r_ojoi = tip3p(i)%O - tip3p(j)%O
           r_ojoi = wrap_vector(r_ojoi, box)
           dist = sqrt(sum(r_ojoi**2))
 
           if (dist >= dhbond ) cycle
           ! calculate angle between oi-oj and oi-hki(k=1,2)
-          r_hi1oi = wrap_vector( tip4p(i)%H1-tip4p(i)%O, box )
-          r_hi2oi = wrap_vector( tip4p(i)%H2-tip4p(i)%O, box )
+          r_hi1oi = wrap_vector( tip3p(i)%H1-tip3p(i)%O, box )
+          r_hi2oi = wrap_vector( tip3p(i)%H2-tip3p(i)%O, box )
 
           r_ojoi = r_ojoi/dist
           r_hi1oi = unit_vector(r_hi1oi)
@@ -180,8 +180,8 @@ program hbond
           cosij(2) = sum(r_ojoi(:)*r_hi2oi(:))
 
           ! calculate angle between oj-oi and oj-hkj(k=1,2)
-          r_hj1oj = wrap_vector( tip4p(j)%H1-tip4p(j)%O, box )
-          r_hj2oj = wrap_vector( tip4p(j)%H2-tip4p(j)%O, box )
+          r_hj1oj = wrap_vector( tip3p(j)%H1-tip3p(j)%O, box )
+          r_hj2oj = wrap_vector( tip3p(j)%H2-tip3p(j)%O, box )
           r_oioj = -1.0E0*r_ojoi
           r_hj1oj = unit_vector(r_hj1oj)
           r_hj2oj = unit_vector(r_hj2oj)
