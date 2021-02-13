@@ -81,7 +81,7 @@ program hbond
     no = natm / 3
     ptotalstep = totalstep / skipstep
     dcosij = cos(dtheta*PI/180.0)
-    allocate(tip4p(1:no))
+    allocate(tip3p(1:no))
     allocate(DistanceList(1:no))
     allocate(sm_val(10*no))
     allocate(sm_indx(10*no))
