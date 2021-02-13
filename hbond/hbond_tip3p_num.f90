@@ -42,11 +42,11 @@ program hbond
     real(8), dimension(2) :: cosij, cosji
     real(8), dimension(3) :: r_ojoi, r_hi1oi, r_hi2oi, r_oioj, r_hj1oj, r_hj2oj
     character(len=200) :: inpfile, outfile
-    integer :: totalstep, skipstep, logstep, liststep, lmax, i_hbond
+    integer :: totalstep, skipstep, logstep, liststep, lmax, i_hbond, total
     real(8) :: dlist, dhbond, dtheta
     namelist/indata/inpfile,outfile
     namelist/inparam/totalstep,skipstep,logstep,liststep,dlist,lmax,dhbond,dtheta
-    character(len=20) :: hfile = "hbond.sm"
+    character(len=20) :: hfile = "hbond_num.dat"
     
     integer :: ih
 
@@ -102,7 +102,7 @@ program hbond
 
         !$omp parallel shared(xtcf, tip3p)
         !$omp private(jo, jh1, jh2)
-        !$omp do
+        !$omp do 
         ! get position (j-th O) and box at it-th step
         do i=1, no
           jo = 3*(i-1) + 1
@@ -136,7 +136,7 @@ program hbond
 
       ! calc hbond-pair for i-DistanceList(i)%pair 
       ! ref:Kumar et.al., J. Chem. Phys.126, 204107, (2007)
-      i_hbond = 1
+      total = 0
       do i=1, no
         do jk=1, lmax
           j = DistanceList(i)%pair(jk)
@@ -170,10 +170,11 @@ program hbond
 
 
           if ( abs(cosij(1)) > dcosij .or. abs(cosij(2)) > dcosij .or. abs(cosji(1)) > dcosij .or. abs(cosji(2)) > dcosij) then
-            i_hbond = i_hbond + 1
+            total = total + 1
           end if
         end do
       end do
+
 
 
       ! call nextstep
