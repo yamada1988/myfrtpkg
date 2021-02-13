@@ -35,10 +35,6 @@ program hbond
     type(mytype2), allocatable, dimension(:) :: DistanceList
 
 
-    real(8), allocatable, dimension(:) :: sm_val
-    integer, allocatable, dimension(:) :: sm_indx, sm_jndx
-
-
     integer, parameter :: nmlfu=20
     integer, parameter :: hbond_io=17
     real(8), parameter :: PI=3.1415927
@@ -52,9 +48,6 @@ program hbond
     namelist/inparam/totalstep,skipstep,logstep,liststep,dlist,lmax,dhbond,dtheta
     character(len=20) :: hfile = "hbond.sm"
     
-
-    real(8), allocatable, dimension(:) :: binary_val 
-    integer, allocatable, dimension(:) :: binary_indx, binary_jndx    
     integer :: ih
 
 
@@ -68,11 +61,6 @@ program hbond
     read(unit=nmlfu, nml=inparam)
     close(unit=nmlfu)
 
-    
-    ! 2.1.2 delete hbond.sm
-    open(hbond_io, file=hfile)
-    close(hbond_io, status='delete')
-
 
     ! 3. Initialize it with the names of xtc files you want to read in and write out
     call xtcf % init(inpfile)
@@ -83,9 +71,6 @@ program hbond
     dcosij = cos(dtheta*PI/180.0)
     allocate(tip3p(1:no))
     allocate(DistanceList(1:no))
-    allocate(sm_val(10*no))
-    allocate(sm_indx(10*no))
-    allocate(sm_jndx(10*no)) 
 
 
     call xtcf % read
@@ -130,11 +115,6 @@ program hbond
         end do
         !$omp end do
         !$omp end parallel
-
-        ! Initialize sparse matrix
-        sm_val = -1.0E0
-        sm_indx = -1
-        sm_jndx = -1
 
         ! make list
         if (mod(pit, liststep) == 0) then
@@ -190,34 +170,11 @@ program hbond
 
 
           if ( abs(cosij(1)) > dcosij .or. abs(cosij(2)) > dcosij .or. abs(cosji(1)) > dcosij .or. abs(cosji(2)) > dcosij) then
-            sm_val(i_hbond) = 1.0E0
-            sm_indx(i_hbond) = int(i)
-            sm_jndx(i_hbond) = int(j)
             i_hbond = i_hbond + 1
           end if
         end do
       end do
 
-      ! allocate binary array
-      allocate(binary_val(i_hbond-1))
-      allocate(binary_indx(i_hbond-1))
-      allocate(binary_jndx(i_hbond-1)) 
-
-      do ih=1, i_hbond-1
-        binary_val(ih) = sm_val(ih)
-        binary_indx(ih) = int(sm_indx(ih))
-        binary_jndx(ih) = int(sm_jndx(ih))
-      end do
-      open(unit = hbond_io, file = hfile, form='UNFORMATTED', action = 'write', position='append')
-      write(hbond_io) i_hbond-1
-      write(hbond_io) binary_val, binary_indx, binary_jndx
-      print *, binary_val(1), binary_indx(1), binary_jndx(1)
-      close(hbond_io)
-
-      ! deallocate binary array
-      deallocate(binary_val)
-      deallocate(binary_indx)
-      deallocate(binary_jndx)
 
       ! call nextstep
       call xtcf % read
