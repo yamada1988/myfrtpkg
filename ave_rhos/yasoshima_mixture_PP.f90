@@ -302,7 +302,8 @@ allocate(cormat_temp(set_line,set_line),rdcor(set_line,set_line))
    if (access( fname3, " ") /= 0) cycle
    open(10,file=fname,status='old',form="UNFORMATTED")
    read(10) cormat_temp
-
+   close(10)
+   
    do i=1,set_line
     do j=1,set_line
      rdcor(i,j) = rdcor(i,j) + cormat_temp(i,j)*w(l,k)
